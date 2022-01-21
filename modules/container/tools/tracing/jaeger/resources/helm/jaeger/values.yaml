@@ -1,0 +1,457 @@
+# Default values for jaeger.
+# This is a YAML-formatted file.
+# Jaeger values are grouped by component. Cassandra values override subchart values
+
+provisionDataStore:
+  cassandra: false
+  elasticsearch: true
+  kafka: false
+
+# Overrides the image tag where default is the chart appVersion.
+tag: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+storage:
+  # allowed values (cassandra, elasticsearch)
+  type: elasticsearch
+  elasticsearch:
+    scheme: http
+    host: es-tracing-master
+    port: 9200
+    user: elastic
+    usePassword: true
+    password: changeme
+    # indexPrefix: test
+    ## Use existing secret (ignores previous password)
+    # existingSecret:
+    # existingSecretKey:
+    nodesWanOnly: false
+    extraEnv: []
+      ## ES related env vars to be configured on the concerned components
+      # - name: ES_SERVER_URLS
+      #   value: http://elasticsearch-master:9200
+      # - name: ES_USERNAME
+      #   value: elastic
+      # - name: ES_INDEX_PREFIX
+    #   value: test
+    ## ES related cmd line opts to be configured on the concerned components
+    cmdlineParams: {}
+      # es.server-urls: http://elasticsearch-master:9200
+      # es.username: elastic
+    # es.index-prefix: test
+
+# For configurable values of the elasticsearch if provisioned, please see:
+# https://github.com/elastic/helm-charts/tree/master/elasticsearch#configuration
+elasticsearch:
+  clusterName: "es-tracing"
+  nodeGroup: "master"
+
+  # The service that non master groups will try to connect to when joining the cluster
+  # This should be set to clusterName + "-" + nodeGroup for your master group
+  masterService: ""
+
+  # Elasticsearch roles that will be applied to this nodeGroup
+  # These will be set as environment variables. E.g. node.master=true
+  roles:
+    master: "true"
+    ingest: "true"
+    data: "true"
+    remote_cluster_client: "true"
+    ml: "true"
+
+  replicas: 3
+  minimumMasterNodes: 2
+
+  esMajorVersion: ""
+
+  # Allows you to add any config files in /usr/share/elasticsearch/config/
+  # such as elasticsearch.yml and log4j2.properties
+  esConfig: {}
+  #  elasticsearch.yml: |
+  #    key:
+  #      nestedkey: value
+  #  log4j2.properties: |
+  #    key = value
+
+  # Extra environment variables to append to this nodeGroup
+  # This will be appended to the current 'env:' key. You can use any of the kubernetes env
+  # syntax here
+  extraEnvs: []
+  #  - name: MY_ENVIRONMENT_VAR
+  #    value: the_value_goes_here
+
+  # Allows you to load environment variables from kubernetes secret or config map
+  envFrom: []
+  # - secretRef:
+  #     name: env-secret
+  # - configMapRef:
+  #     name: config-map
+
+  # A list of secrets and their paths to mount inside the pod
+  # This is useful for mounting certificates for security and for mounting
+  # the X-Pack license
+  secretMounts: []
+  #  - name: elastic-certificates
+  #    secretName: elastic-certificates
+  #    path: /usr/share/elasticsearch/config/certs
+  #    defaultMode: 0755
+
+  hostAliases: []
+  #- ip: "127.0.0.1"
+  #  hostnames:
+  #  - "foo.local"
+  #  - "bar.local"
+
+  image: "docker.elastic.co/elasticsearch/elasticsearch"
+  imageTag: "7.12.0"
+  imagePullPolicy: "IfNotPresent"
+
+  podAnnotations: {}
+  # iam.amazonaws.com/role: es-cluster
+
+  # additionals labels
+  labels: {}
+
+  esJavaOpts: "-Xmx1g -Xms1g"
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  networkHost: "0.0.0.0"
+
+  volumeClaimTemplate:
+    storageClassName: gp2
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 30Gi
+  rbac:
+    create: true
+    serviceAccountAnnotations: {}
+  podSecurityPolicy:
+    create: false
+  persistence:
+    enabled: true
+    labels:
+      # Add default labels for the volumeClaimTemplate of the StatefulSet
+      enabled: false
+    annotations: {}
+  # By default this will make sure two pods don't end up on the same node
+  # Changing this to a region would allow you to spread pods across regions
+  antiAffinityTopologyKey: "failure-domain.beta.kubernetes.io/zone"
+  # Hard means that by default pods will only be scheduled if there are enough nodes for them
+  # and that they will never end up on the same node. Setting this to soft will do this "best effort"
+  antiAffinity: "soft"
+  # The default is to deploy all pods serially. By setting this to parallel all pods are started at
+  # the same time when bootstrapping the cluster
+  podManagementPolicy: "Parallel"
+  # The environment variables injected by service links are not used, but can lead to slow Elasticsearch boot times when
+  # there are many services in the current namespace.
+  # If you experience slow pod startups you probably want to set this to `false`.
+  enableServiceLinks: true
+  protocol: http
+  httpPort: 9200
+  transportPort: 9300
+  service:
+    type: ClusterIP
+  updateStrategy: RollingUpdate
+  # This is the max unavailable setting for the pod disruption budget
+  # The default value of 1 will make sure that kubernetes won't allow more than 1
+  # of your pods to be unavailable during maintenance
+  maxUnavailable: 1
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    # readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+  # How long to wait for elasticsearch to stop gracefully
+  terminationGracePeriod: 120
+  sysctlVmMaxMapCount: 262144
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 3
+    timeoutSeconds: 5
+  # https://www.elastic.co/guide/en/elasticsearch/reference/7.12/cluster-health.html#request-params wait_for_status
+  clusterHealthCheckParams: "wait_for_status=green&timeout=1s"
+  # Enabling this will publically expose your Elasticsearch instance.
+  # Only enable this if you have security enabled on your cluster
+  ingress:
+    enabled: false
+  nameOverride: ""
+  fullnameOverride: ""
+  # https://github.com/elastic/helm-charts/issues/63
+  masterTerminationFix: false
+  sysctlInitContainer:
+    enabled: true
+  networkPolicy:
+    ## Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
+    ## In order for a Pod to access Elasticsearch, it needs to have the following label:
+    ## {{ template "uname" . }}-client: "true"
+    ## Example for default configuration to access HTTP port:
+    ## elasticsearch-master-http-client: "true"
+    ## Example for default configuration to access transport port:
+    ## elasticsearch-master-transport-client: "true"
+    http:
+      enabled: false
+      ## if explicitNamespacesSelector is not set or set to {}, only client Pods being in the networkPolicy's namespace
+      ## and matching all criteria can reach the DB.
+      ## But sometimes, we want the Pods to be accessible to clients from other namespaces, in this case, we can use this
+      ## parameter to select these namespaces
+      ##
+      # explicitNamespacesSelector:
+      #   # Accept from namespaces with all those different rules (only from whitelisted Pods)
+      #   matchLabels:
+      #     role: frontend
+      #   matchExpressions:
+      #     - {key: role, operator: In, values: [frontend]}
+
+      ## Additional NetworkPolicy Ingress "from" rules to set. Note that all rules are OR-ed.
+      ##
+      # additionalRules:
+      #   - podSelector:
+      #       matchLabels:
+      #         role: frontend
+      #   - podSelector:
+      #       matchExpressions:
+      #         - key: role
+      #           operator: In
+      #           values:
+      #             - frontend
+
+    transport:
+      ## Note that all Elasticsearch Pods can talks to themselves using transport port even if enabled.
+      enabled: false
+      # explicitNamespacesSelector:
+      #   matchLabels:
+      #     role: frontend
+      #   matchExpressions:
+      #     - {key: role, operator: In, values: [frontend]}
+      # additionalRules:
+      #   - podSelector:
+      #       matchLabels:
+      #         role: frontend
+      #   - podSelector:
+      #       matchExpressions:
+      #         - key: role
+      #           operator: In
+      #           values:
+      #             - frontend
+
+ingester:
+  enabled: false
+
+agent:
+  podSecurityContext: {}
+  securityContext: {}
+  enabled: true
+  annotations: {}
+  image: jaegertracing/jaeger-agent
+  imagePullSecrets: []
+  pullPolicy: IfNotPresent
+  cmdlineParams: {}
+  extraEnv: []
+  daemonset:
+    useHostPort: false
+  service:
+    annotations: {}
+    type: ClusterIP
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 128Mi
+  serviceAccount:
+    create: true
+    # Explicitly mounts the API credentials for the Service Account
+    automountServiceAccountToken: false
+    name:
+    annotations: {}
+  ## Additional pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  podLabels: {}
+  useHostNetwork: false
+  dnsPolicy: ClusterFirst
+  serviceMonitor:
+    enabled: true
+
+collector:
+  podSecurityContext: {}
+  securityContext: {}
+  enabled: true
+  annotations: {}
+  image: jaegertracing/jaeger-collector
+  pullPolicy: IfNotPresent
+  dnsPolicy: ClusterFirst
+  replicaCount: 1
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  serviceAccount:
+    create: true
+    annotations: {}
+  ## Additional pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  podLabels: {}
+  extraConfigmapMounts: []
+  # - name: jaeger-config
+  #   mountPath: /config
+  #   subPath: ""
+  #   configMap: jaeger-config
+  #   readOnly: true
+  # samplingConfig: |-
+  #   {
+  #     "service_strategies": [
+  #       {
+  #         "service": "foo",
+  #         "type": "probabilistic",
+  #         "param": 0.8,
+  #         "operation_strategies": [
+  #           {
+  #             "operation": "op1",
+  #             "type": "probabilistic",
+  #             "param": 0.2
+  #           },
+  #           {
+  #             "operation": "op2",
+  #             "type": "probabilistic",
+  #             "param": 0.4
+  #           }
+  #         ]
+  #       },
+  #       {
+  #         "service": "bar",
+  #         "type": "ratelimiting",
+  #         "param": 5
+  #       }
+  #     ],
+  #     "default_strategy": {
+  #       "type": "probabilistic",
+  #       "param": 1
+  #     }
+  #   }
+  serviceMonitor:
+    enabled: true
+
+query:
+  enabled: true
+  oAuthSidecar:
+    enabled: false
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.1.0
+    pullPolicy: IfNotPresent
+    containerPort: 4180
+    args: []
+    extraConfigmapMounts: []
+    extraSecretMounts: []
+  podSecurityContext: {}
+  securityContext: {}
+  agentSidecar:
+    enabled: true
+  annotations: {}
+  image: jaegertracing/jaeger-query
+  imagePullSecrets: []
+  pullPolicy: IfNotPresent
+  dnsPolicy: ClusterFirst
+  cmdlineParams: {}
+  extraEnv: []
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.pathmatcher: PathPrefix
+    hosts:
+      - jaeger.cluster.local
+    health:
+      exposed: false
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 128Mi
+  serviceAccount:
+    create: true
+    annotations: {}
+  ## Additional pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  podLabels: {}
+  serviceMonitor:
+    enabled: true
+  # config: |-
+  #   {
+  #     "dependencies": {
+  #       "dagMaxNumServices": 200,
+  #       "menuEnabled": true
+  #     },
+  #     "archiveEnabled": true,
+  #     "tracking": {
+  #       "gaID": "UA-000000-2",
+  #       "trackErrors": true
+  #     }
+  #   }
+
+esIndexCleaner:
+  enabled: true
+  securityContext:
+    runAsUser: 1000
+  podSecurityContext:
+    runAsUser: 1000
+  annotations: {}
+  image: jaegertracing/jaeger-es-index-cleaner
+  imagePullSecrets: []
+  tag: latest
+  pullPolicy: Always
+  cmdlineParams: {}
+  extraEnv: []
+    # - name: ROLLOVER
+  #   value: 'true'
+  schedule: "55 23 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 128Mi
+  numberOfDays: 7
+  serviceAccount:
+    create: true
+  ## Additional pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  podLabels: {}
