@@ -77,14 +77,10 @@ variable grafana_storage_size {
   default = 16
 }
 
-variable grafana_storage_sku {
-  description = "Storage SKU allocated by Grafana; supported values are: Standard, Premium"
+variable grafana_storage_class {
+  description = "Kubernetes storage class of storage allocated by Grafana"
   type = string
-  default = "Premium"
-  validation {
-    condition = var.grafana_storage_sku == "Standard" || var.grafana_storage_sku == "Premium"
-    error_message = "Expected Standard or Premium storage SKU for each Prometheus instance."
-  }
+  default = "managed-csi-premium"
 }
 
 variable ingress_host_name {

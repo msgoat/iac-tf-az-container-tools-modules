@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     azurerm = {
-      version = "~> 2.70"
+      version = "~> 3.39"
     }
     helm = {
       version = "~> 2.1"
