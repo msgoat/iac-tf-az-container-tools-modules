@@ -1,6 +1,6 @@
 # iac-tf-az-container-tools-modules
 
-> __@deprecated__ please use [iac-tf-az-cloudtrain-modules] instead!
+> __@deprecated__ please use git repo [iac-tf-az-cloudtrain-modules](https://github.com/msgoat/iac-tf-az-cloudtrain-modules) instead!
 
 Set of Terraform modules to manage cluster tools stacks on Azure AKS clusters.
 
