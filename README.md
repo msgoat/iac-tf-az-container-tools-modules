@@ -1,5 +1,7 @@
 # iac-tf-az-container-tools-modules
 
+> __@deprecated__ please use [iac-tf-az-cloudtrain-modules] instead!
+
 Set of Terraform modules to manage cluster tools stacks on Azure AKS clusters.
 
 Originally developed for msg's `Cloud Training Program` and `Cloud Expert Program`.
